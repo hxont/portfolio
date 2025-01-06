@@ -4,13 +4,13 @@ import { CiUser } from "react-icons/ci";
 import { IoMenuSharp } from "react-icons/io5";
 import { HiMiniXMark } from "react-icons/hi2";
 import {useState} from "react";
+import {ReactTyped} from "react-typed";
 
 function Home() {
     // 반응형 800px 이하일 때
     const [isMenuBarView, setIsMenuBarView] = useState(false);
 
     const handleView = () => {
-        console.log(isMenuBarView);
         setIsMenuBarView(!isMenuBarView);
     }
 
@@ -33,9 +33,23 @@ function Home() {
                     <ul className={`profile ${isMenuBarView ? "show" : ""}`}>
                         <a href=""><CiUser /></a>
                     </ul>
+
                     <button className="toggle" onClick={handleView}>
                         {isMenuBarView ? <HiMiniXMark/> : <IoMenuSharp/>}
                     </button>
+                </div>
+
+                <div className="textBox">
+                <div className="text">
+                    <ReactTyped strings={[
+                        "Hello, World!",
+                        "こんにちは、世界!",
+                        "Bonjour, le monde!"
+                    ]}
+                                typeSpeed={50}
+                                backSpeed={50}
+                                loop/>
+                </div>
                 </div>
             </div>
         </>
