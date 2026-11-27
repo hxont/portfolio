@@ -187,8 +187,21 @@ function Home() {
             const track = trackRef.current;
             if (!wrap || !track) return;
             if (window.innerWidth < 861) {
+                // 모바일: 칸이 세로로 쌓이므로, 화면 가운데에 가장 가까운 칸을 선택
                 wrap.style.height = '';
                 track.style.transform = '';
+                const mid = window.innerHeight / 2;
+                let best = 0;
+                let bestGap = Infinity;
+                Array.from(track.children).forEach((el, i) => {
+                    const r = el.getBoundingClientRect();
+                    const gap = Math.abs(r.top + r.height / 2 - mid);
+                    if (gap < bestGap) {
+                        bestGap = gap;
+                        best = i;
+                    }
+                });
+                setActiveTile(best);
                 return;
             }
             const n = skills.length;

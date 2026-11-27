@@ -575,3 +575,17 @@ a { color: inherit; text-decoration: none; }
     .hscroll .tile.reveal.in { transform: scale(0.94); }
     .hscroll .tile.reveal.in[data-on="true"] { transform: scale(1.04); }
 }
+
+/* ── 모바일 다듬기 ── */
+/* 한글이 단어 중간에서 끊기지 않게 (예: "불꽃놀 / 이 멍") */
+body { word-break: keep-all; overflow-wrap: break-word; }
+/* 휴대폰 주소창 높이 변화에도 첫 화면 버튼이 가려지지 않게 */
+.hero-pin { height: 100svh; }
+.hero-pin .hero { min-height: 100svh; }
+@media (max-width: 860px) {
+    .footer { flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 32px 16px 40px; }
+}
+/* 좁은 화면에선 소개 문장 줄바꿈을 자동으로 (억지 줄바꿈 때문에 "하는"만 혼자 떨어지지 않게) */
+@media (max-width: 480px) {
+    .hero-tagline { white-space: normal; }
+}
