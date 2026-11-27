@@ -1,5 +1,5 @@
 import './Home.css';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { IoMenuSharp } from 'react-icons/io5';
 import { HiMiniXMark } from 'react-icons/hi2';
 import { FiArrowUpRight, FiArrowDown, FiGithub } from 'react-icons/fi';
@@ -82,11 +82,62 @@ function TypedTitle() {
     );
 }
 
+// 사이트 전용 커서: 리본이 마우스를 따라다님. 링크·버튼 위에선 갸웃하며 커짐 (마우스 쓰는 PC에서만)
+function Cursor() {
+    const dot = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!window.matchMedia('(pointer: fine)').matches) return;
+        const root = document.documentElement;
+        root.classList.add('has-cursor', 'cursor-out'); // 마우스를 움직이기 전엔 숨김
+        const move = (e: PointerEvent) => {
+            const el = dot.current;
+            if (!el) return;
+            el.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+            el.classList.toggle('hot', !!(e.target as Element | null)?.closest('a, button'));
+            root.classList.remove('cursor-out');
+        };
+        const leave = () => root.classList.add('cursor-out');
+        const down = () => dot.current?.classList.add('down');
+        const up = () => dot.current?.classList.remove('down');
+        window.addEventListener('pointermove', move);
+        document.addEventListener('mouseleave', leave);
+        window.addEventListener('pointerdown', down);
+        window.addEventListener('pointerup', up);
+        return () => {
+            root.classList.remove('has-cursor', 'cursor-out');
+            window.removeEventListener('pointermove', move);
+            document.removeEventListener('mouseleave', leave);
+            window.removeEventListener('pointerdown', down);
+            window.removeEventListener('pointerup', up);
+        };
+    }, []);
+    return (
+        <div className="cursor-dot" ref={dot} aria-hidden>
+            <img src="/ribbon.png" alt="" />
+        </div>
+    );
+}
+
 function Home() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [active, setActive] = useState('');
     const [scrolled, setScrolled] = useState(false);
     const [activeTile, setActiveTile] = useState(0); // Skill: 검은 칸 번호
+    const [activeProject, setActiveProject] = useState(0); // Project: 지금 펼쳐진 프로젝트
+    const showcaseRef = useRef<HTMLDivElement>(null);
+    const heroWrapRef = useRef<HTMLDivElement>(null);
+    const heroCardRef = useRef<HTMLDivElement>(null);
+    const hscrollRef = useRef<HTMLDivElement>(null);
+    const trackRef = useRef<HTMLDivElement>(null);
+
+    // 목록을 누르면 그 프로젝트 차례가 되는 위치로 스크롤
+    const goProject = (i: number) => {
+        const el = showcaseRef.current;
+        if (!el) return;
+        const top = el.getBoundingClientRect().top + window.scrollY;
+        const total = el.offsetHeight - window.innerHeight;
+        window.scrollTo({ top: top + (total * (i + 0.5)) / projects.length, behavior: 'smooth' });
+    };
 
     // 스크롤 위치에 따라 현재 메뉴 표시 + 등장 애니메이션
     useEffect(() => {
@@ -121,9 +172,64 @@ function Home() {
             // 커서는 지금 쓰고 있는 문장에만 (다 쓰면 숨김)
             lines.forEach((el, i) => el.classList.toggle('typing', p > 0 && i === current));
         };
+        // Project 쇼케이스: 화면이 고정된 동안 스크롤 진행도로 몇 번째 프로젝트인지 결정
+        const paintShowcase = () => {
+            const el = showcaseRef.current;
+            if (!el || !el.offsetParent) return; // 모바일에선 숨김
+            const r = el.getBoundingClientRect();
+            const total = el.offsetHeight - window.innerHeight;
+            const p = Math.min(0.999, Math.max(0, -r.top / total));
+            setActiveProject(Math.floor(p * projects.length));
+        };
+        // Skill 가로 슬라이드: 칸마다 스크롤 구간을 넉넉히 주고, 구간마다 잠깐 멈췄다가 다음 칸으로 넘어감 (PC만)
+        const paintSkillSlide = () => {
+            const wrap = hscrollRef.current;
+            const track = trackRef.current;
+            if (!wrap || !track) return;
+            if (window.innerWidth < 861) {
+                wrap.style.height = '';
+                track.style.transform = '';
+                return;
+            }
+            const n = skills.length;
+            const vh = window.innerHeight;
+            const perTile = vh * 0.8; // 칸 하나에 스크롤 0.8화면
+            const total = perTile * (n - 1);
+            const endHold = perTile * 0.8; // 마지막 칸도 충분히 보여주고 넘어가도록 여유 구간
+            wrap.style.height = `${vh + total + endHold}px`;
+            const p = Math.min(1, Math.max(0, -wrap.getBoundingClientRect().top / total));
+            // 구간 앞뒤 30%는 멈춤, 가운데 40%에서만 부드럽게 이동
+            const s = p * (n - 1);
+            const i = Math.min(n - 2, Math.floor(s));
+            const f = Math.min(1, Math.max(0, (s - i - 0.3) / 0.4));
+            const eased = f * f * (3 - 2 * f);
+            const pos = i + eased; // 0 ~ n-1
+            const dist = Math.max(0, track.scrollWidth - track.clientWidth);
+            track.style.transform = `translateX(${(-pos / (n - 1)) * dist}px)`;
+            setActiveTile(Math.round(pos));
+        };
+
+        // [C] 첫 화면 카드: 스크롤 진행도(0→1)에 따라 여백·모서리가 줄어 화면 가득
+        const paintHeroCard = () => {
+            const wrap = heroWrapRef.current;
+            const card = heroCardRef.current;
+            if (!wrap || !card) return;
+            const total = wrap.offsetHeight - window.innerHeight;
+            const p = Math.min(1, Math.max(0, window.scrollY / total));
+            const k = 1 - p;
+            const side = window.innerWidth < 861 ? 10 : 24;
+            card.style.inset = `${k * 92}px ${k * side}px ${k * side}px`;
+            card.style.borderRadius = `${k * 40}px`;
+        };
         const onScroll = () => {
             setScrolled(window.scrollY > 24);
-            if (!frame) frame = requestAnimationFrame(paintLines);
+            if (!frame)
+                frame = requestAnimationFrame(() => {
+                    paintLines();
+                    paintShowcase();
+                    paintHeroCard();
+                    paintSkillSlide();
+                });
         };
         onScroll();
         window.addEventListener('scroll', onScroll, { passive: true });
@@ -157,6 +263,7 @@ function Home() {
 
     return (
         <div className="page">
+            <Cursor />
             <div className="bg" aria-hidden>
                 <span className="blob b1" />
                 <span className="blob b2" />
@@ -188,28 +295,34 @@ function Home() {
                 </button>
             </header>
 
-            <section className="hero" id="top">
-                <TypedTitle />
-                <div className="hero-bottom reveal">
-                    <div>
-                        <p className="hero-name">
-                            {profile.name}
-                        </p>
-                        <p className="hero-tagline">{profile.tagline}</p>
+            {/* [C] 첫 화면: 둥근 핑크 카드가 스크롤하면 화면 가득 커짐 */}
+            <div className="hero-wrap" ref={heroWrapRef}>
+                <div className="hero-pin">
+                    <div className="hero-card" ref={heroCardRef} aria-hidden />
+                <section className="hero" id="top">
+                    <TypedTitle />
+                    <div className="hero-bottom reveal">
+                        <div>
+                            <p className="hero-name">
+                                {profile.name}
+                            </p>
+                            <p className="hero-tagline">{profile.tagline}</p>
+                        </div>
+                        <div className="hero-actions">
+                            <a className="btn dark" href={profile.velog} target="_blank" rel="noreferrer">
+                                <SiVelog /> Velog <FiArrowUpRight />
+                            </a>
+                            <a className="btn light" href={profile.github} target="_blank" rel="noreferrer">
+                                <FiGithub /> GitHub
+                            </a>
+                        </div>
                     </div>
-                    <div className="hero-actions">
-                        <a className="btn dark" href={profile.velog} target="_blank" rel="noreferrer">
-                            <SiVelog /> Velog <FiArrowUpRight />
-                        </a>
-                        <a className="btn light" href={profile.github} target="_blank" rel="noreferrer">
-                            <FiGithub /> GitHub
-                        </a>
-                    </div>
+                    <a className="scroll-hint" href="#about" aria-label="아래로">
+                        <FiArrowDown />
+                    </a>
+                </section>
                 </div>
-                <a className="scroll-hint" href="#about" aria-label="아래로">
-                    <FiArrowDown />
-                </a>
-            </section>
+            </div>
 
             <div className="marquee" aria-hidden>
                 <div className="marquee-track">
@@ -226,7 +339,7 @@ function Home() {
             </div>
 
             <section className="section" id="about">
-                <p className="label reveal">(01) About</p>
+                <p className="label reveal">01 About</p>
                 <div className="about-grid">
                     <div className="about-lead reveal">
                         {about.map((line) => (
@@ -252,14 +365,16 @@ function Home() {
             </section>
 
             <section className="section" id="skill">
-                <p className="label reveal">(02) Skill</p>
-                <div className={`bento a${activeTile}`} onMouseLeave={() => setActiveTile(0)}>
+                {/* PC: 화면을 고정하고 세로 스크롤만큼 칸들이 가로로 지나감 */}
+                <div className="hscroll" ref={hscrollRef}>
+                    <div className="hpin">
+                <p className="label reveal">02 Skill</p>
+                <div className={`bento a${activeTile}`} ref={trackRef}>
                     {skills.map((g, i) => (
                         <div
                             className={`tile reveal t${i}`}
                             data-on={activeTile === i}
                             key={g.title}
-                            onMouseEnter={() => setActiveTile(i)}
                         >
                             <span className="tile-no">0{i + 1}</span>
                             <h3>{g.title}</h3>
@@ -271,10 +386,81 @@ function Home() {
                         </div>
                     ))}
                 </div>
+                    </div>
+                </div>
             </section>
 
             <section className="section" id="project">
-                <p className="label reveal">(03) Project</p>
+                <p className="label reveal">03 Project</p>
+
+                {/* PC: 화면을 고정하고 스크롤하면 프로젝트가 하나씩 펼쳐짐 */}
+                <div className="showcase" ref={showcaseRef} style={{ height: `${projects.length * 70 + 40}vh` }}>
+                    <div className="stage">
+                        <ol className="sc-list">
+                            {projects.map((p, i) => (
+                                <li key={p.title} className={i === activeProject ? 'on' : ''}>
+                                    <button className="sc-head" onClick={() => goProject(i)}>
+                                        <span className="work-no">{String(i + 1).padStart(2, '0')}</span>
+                                        <h3>
+                                            {p.title}
+                                            {p.live && <span className="live">운영 중</span>}
+                                        </h3>
+                                        <span className="period">{p.period}</span>
+                                    </button>
+                                    <div className="sc-body">
+                                        <div className="sc-body-inner">
+                                            <p className="work-summary">{p.summary}</p>
+                                            {p.points.length > 0 && (
+                                                <ul className="work-points">
+                                                    {p.points.map((pt) => (
+                                                        <li key={pt}>{pt}</li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                            <div className="sc-foot">
+                                                <div className="tags">
+                                                    {p.stack.map((s) => (
+                                                        <span key={s}>{s}</span>
+                                                    ))}
+                                                </div>
+                                                {p.link && (
+                                                    <a className="sc-link" href={p.link} target="_blank" rel="noreferrer">
+                                                        보러 가기 <FiArrowUpRight />
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            ))}
+                        </ol>
+                        <div className="sc-preview" aria-hidden>
+                            {projects.map((p, i) => (
+                                <div key={p.title} className={`sc-shot ${i === activeProject ? 'on' : ''}`}>
+                                    {p.shots ? (
+                                        <div className="sc-phones">
+                                            {p.shots.map((src) => (
+                                                <img key={src} src={src} alt="" loading="lazy" />
+                                            ))}
+                                        </div>
+                                    ) : p.image ? (
+                                        <img src={p.image} alt="" loading="lazy" className={p.fit === 'contain' ? 'contain' : ''} />
+                                    ) : (
+                                        <div className="sc-ph">
+                                            <em>{p.title}</em>
+                                            <span>{p.stack.join(' · ')}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                            <span className="sc-count">
+                                {String(activeProject + 1).padStart(2, '0')} / {String(projects.length).padStart(2, '0')}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 모바일: 기존 목록 */}
                 <ul className="works">
                     {projects.map((p, i) => {
                         const Tag = p.link ? 'a' : 'div';
@@ -285,6 +471,19 @@ function Home() {
                                     {...(p.link ? { href: p.link, target: '_blank', rel: 'noreferrer' } : {})}
                                 >
                                     <span className="work-no">{String(i + 1).padStart(2, '0')}</span>
+                                    {(p.image || p.shots) && (
+                                        <div className="work-thumb" aria-hidden>
+                                            {p.shots ? (
+                                                <div className="sc-phones">
+                                                    {p.shots.map((src) => (
+                                                        <img key={src} src={src} alt="" loading="lazy" />
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <img src={p.image} alt="" loading="lazy" className={p.fit === 'contain' ? 'contain' : ''} />
+                                            )}
+                                        </div>
+                                    )}
                                     <div className="work-main">
                                         <h3>
                                             {p.title}
@@ -316,8 +515,19 @@ function Home() {
             </section>
 
             <section className="section" id="contact">
-                <div className="contact reveal">
-                    <p className="label light">(04) Contact</p>
+                <div
+                    className="contact reveal"
+                    onMouseMove={(e) => {
+                        const box = e.currentTarget.getBoundingClientRect();
+                        e.currentTarget.style.setProperty('--mx', `${e.clientX - box.left}px`);
+                        e.currentTarget.style.setProperty('--my', `${e.clientY - box.top}px`);
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.removeProperty('--mx');
+                        e.currentTarget.style.removeProperty('--my');
+                    }}
+                >
+                    <p className="label light">04 Contact</p>
                     <h2>
                         Let's build
                         <br />
@@ -331,6 +541,9 @@ function Home() {
 
             <footer className="footer">
                 <span>© {new Date().getFullYear()} hxont</span>
+                <a className="credit" href="https://www.flaticon.com/free-icon/ribbon_2357692" target="_blank" rel="noreferrer">
+                    Ribbon icon from Flaticon
+                </a>
                 <a href="#top">Back to top ↑</a>
             </footer>
         </div>

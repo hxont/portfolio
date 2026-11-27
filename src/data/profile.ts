@@ -44,6 +44,9 @@ export type Project = {
     stack: string[];
     link?: string;
     live?: boolean; // 운영 중 표시
+    image?: string; // Project 미리보기 이미지 (public/projects)
+    shots?: string[]; // 앱 화면 여러 장 (휴대폰 화면처럼 나란히)
+    fit?: 'contain'; // 이미지를 잘리지 않게 전체 보이기
 };
 
 // 내부 업무 플랫폼 화면·리니어 내용은 넣지 않음
@@ -51,6 +54,7 @@ export const projects: Project[] = [
     {
         title: '공식 홈페이지',
         live: true,
+        image: '/projects/home.jpg',
         period: '2025.11 ~',
         summary: '예이린 사회적협동조합 공식 홈페이지 개발 및 운영',
         points: [],
@@ -60,6 +64,7 @@ export const projects: Project[] = [
     {
         title: '럭키드로우 룰렛',
         live: true,
+        image: '/projects/roulette.jpg',
         period: '2026.09',
         summary: '2026 대한민국 사회서비스 박람회 부스에서 사용',
         points: [
@@ -72,6 +77,7 @@ export const projects: Project[] = [
     {
         title: '불꽃놀이 멍',
         live: true,
+        image: '/projects/fireworks.jpg',
         period: '2026.11',
         summary: '광안리, 여의도에서 사람들과 함께 즐기는 불꽃놀이 멍 플랫폼',
         points: [
@@ -84,6 +90,7 @@ export const projects: Project[] = [
     },
     {
         title: '통합 모니터링 시스템',
+        image: '/projects/monitor.jpg',
         period: '2024.09 ~ 2025.01',
         summary: '통합 모니터링 시스템 · 웹/앱 기획 · 디자인 · 프론트엔드 개발',
         points: [
@@ -93,6 +100,7 @@ export const projects: Project[] = [
     },
     {
         title: 'Pilly',
+        shots: ['/projects/pilly1.jpg', '/projects/pilly2.jpg', '/projects/pilly3.jpg'],
         period: '2025.01 ~ 2025.05',
         summary: '주기적으로 복약하는 사람들에게 편의성을 제공하는 앱',
         points: ['기획 · 디자인 · 프론트엔드 개발', '복약 푸시 알림, OCR 처방전 인식, AI 부작용 예측 화면'],
@@ -101,6 +109,8 @@ export const projects: Project[] = [
     },
     {
         title: 'Nutri Plan',
+        image: '/projects/nutri.jpg',
+        fit: 'contain',
         period: '2024.09 ~ 2024.12',
         summary: '식단과 운동 관리를 체계적으로 도와주는 앱',
         points: ['기획 · 디자인 · 프론트엔드 개발', '식단 분석·피드백, 위치 기반 운동 장소 추천 화면', 'AI 챗봇 맞춤 식단·운동 추천 화면', '성과 발표회 참여'],
@@ -108,6 +118,7 @@ export const projects: Project[] = [
     },
     {
         title: 'Deepfocus',
+        shots: ['/projects/deep1.jpg', '/projects/deep2.jpg', '/projects/deep3.jpg'],
         period: '2024.06 ~ 2024.09',
         summary: '독서 활동에 깊은 집중을 할 수 있도록 도움을 주고, 체계적으로 기록할 수 있는 앱',
         points: ['기획 · 디자인 · 프론트엔드 개발', '도서 검색, 독서 타이머, 독서 메모, 독서 나무(리포트) 화면'],
